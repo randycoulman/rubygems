@@ -39,14 +39,18 @@ command.  For further discussion see the help for the yank command.
     end
 
     @host = nil
+    @push_host = nil
   end
 
   def execute
-    @host = options[:host]
+    gem_name = get_one_gem_name
+    metadata = Gem::Package.new(gem_name).spec.metadata
+    @push_host = metadata['allowed_push_host']
+    @host = options[:host] || metadata['default_gem_server'] || @push_host
 
     sign_in @host
 
-    send_gem get_one_gem_name
+    send_gem gem_name
   end
 
   def send_gem name
@@ -71,22 +75,8 @@ You can upgrade or downgrade to the latest release version with:
       terminate_interaction 1
     end
 
-    gem_data = Gem::Package.new(name)
-
-    unless @host then
-      @host = gem_data.spec.metadata['default_gem_server']
-    end
-
-    push_host = nil
-
-    if gem_data.spec.metadata.has_key?('allowed_push_host')
-      push_host = gem_data.spec.metadata['allowed_push_host']
-    end
-
-    @host ||= push_host
-
     # Always include @host, even if it's nil
-    args += [ @host, push_host ]
+    args += [ @host, @push_host ]
 
     say "Pushing gem to #{@host || Gem.host}..."
 
@@ -101,4 +91,3 @@ You can upgrade or downgrade to the latest release version with:
   end
 
 end
-
